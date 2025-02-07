@@ -95,4 +95,7 @@ backend.add(
   }),
 );
 
+backend.add(
+  import('@backstage-community/plugin-tech-insights-backend-module-scm'),
+);
 backend.start();
