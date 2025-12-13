@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+import { Config } from 'ollama';
+
 // =============================================================================
 // Constants and Enums
 // =============================================================================
@@ -205,6 +207,7 @@ export interface ProviderConfig {
   baseUrl: string;
   /** Model identifier to use */
   model: string;
+  options?: any;
 }
 
 /**

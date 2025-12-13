@@ -25,6 +25,7 @@ import { ClaudeProvider } from './claude-provider';
 import { GeminiProvider } from './gemini-provider';
 import { OllamaProvider } from './ollama-provider';
 import { LiteLLMProvider } from './litellm-provider';
+import { BedrockProvider } from './bedrock-provider';
 import { ProviderConfig } from '../types';
 
 describe('ProviderFactory', () => {
@@ -36,6 +37,7 @@ describe('ProviderFactory', () => {
         { type: 'gemini', expectedClass: GeminiProvider },
         { type: 'ollama', expectedClass: OllamaProvider },
         { type: 'litellm', expectedClass: LiteLLMProvider },
+        { type: 'bedrock', expectedClass: BedrockProvider },
       ];
 
       testCases.forEach(({ type, expectedClass }) => {
@@ -251,6 +253,28 @@ describe('getProviderConfig', () => {
     expect(result.baseUrl).toBe('http://localhost:4000');
     expect(result.type).toBe('litellm');
     expect(result.apiKey).toBeUndefined();
+  });
+
+  it('should configure Bedrock provider with default region', () => {
+    const mockProviderConfig = {
+      getString: jest.fn().mockImplementation((key: string) => {
+        if (key === 'id') return 'bedrock';
+        if (key === 'model') return 'anthropic.claude-3-sonnet-20240229-v1:0';
+        throw new Error(`Unexpected key: ${key}`);
+      }),
+      getOptionalString: jest.fn().mockImplementation((key: string) => {
+        if (key === 'baseUrl') return undefined;
+        if (key === 'token') return 'test-access-key';
+        return undefined;
+      }),
+    } as any;
+
+    mockConfig.getOptionalConfigArray.mockReturnValue([mockProviderConfig]);
+
+    const result = getProviderConfig(mockConfig);
+    expect(result.baseUrl).toBe('us-east-1');
+    expect(result.type).toBe('bedrock');
+    expect(result.apiKey).toBe('test-access-key');
   });
 
   it('should throw error when API key is missing for non-Ollama/LiteLLM providers', () => {

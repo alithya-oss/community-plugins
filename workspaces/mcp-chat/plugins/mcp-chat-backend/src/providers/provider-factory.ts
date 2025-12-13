@@ -21,6 +21,7 @@ import { ClaudeProvider } from './claude-provider';
 import { GeminiProvider } from './gemini-provider';
 import { OllamaProvider } from './ollama-provider';
 import { LiteLLMProvider } from './litellm-provider';
+import { BedrockProvider } from './bedrock-provider';
 import { RootConfigService } from '@backstage/backend-plugin-api';
 
 /**
@@ -56,6 +57,8 @@ export class ProviderFactory {
       case 'litellm':
         return new LiteLLMProvider(config);
 
+      case 'bedrock':
+        return new BedrockProvider(config);
       default:
         throw new Error(`Unsupported provider: ${config.type}`);
     }
@@ -86,6 +89,7 @@ export function getProviderConfig(config: RootConfigService): ProviderConfig {
     'gemini',
     'ollama',
     'litellm',
+    'bedrock',
   ];
   if (!allowedProviders.includes(providerId)) {
     throw new Error(
@@ -141,6 +145,14 @@ export function getProviderConfig(config: RootConfigService): ProviderConfig {
         providerConfig.getOptionalString('baseUrl') || 'http://localhost:4000',
       model: model,
     },
+
+    bedrock: {
+      type: 'bedrock',
+      // No API key needed for Bedrock
+      baseUrl: providerConfig.getOptionalString('baseUrl') || 'us-east-1',
+      model: model,
+      options: { rootConfig: config },
+    },
   };
 
   const configTemplate = configs[providerId];
@@ -150,7 +162,7 @@ export function getProviderConfig(config: RootConfigService): ProviderConfig {
 
   // Validate required fields
   // Ollama, LiteLLM, and OpenAI Responses can work without API keys depending on configuration
-  const noApiKeyRequired = ['ollama', 'litellm', 'openai-responses'];
+  const noApiKeyRequired = ['ollama', 'litellm', 'openai-responses', 'bedrock'];
   if (!noApiKeyRequired.includes(providerId) && !configTemplate.apiKey) {
     throw new Error(`API key is required for provider: ${providerId}`);
   }
