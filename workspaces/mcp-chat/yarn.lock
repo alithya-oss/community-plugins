@@ -2635,7 +2635,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@backstage-community/plugin-mcp-chat-backend-module-agentgateway@workspace:plugins/mcp-chat-backend-module-agentgateway":
+"@backstage-community/plugin-mcp-chat-backend-module-agentgateway@workspace:^, @backstage-community/plugin-mcp-chat-backend-module-agentgateway@workspace:plugins/mcp-chat-backend-module-agentgateway":
   version: 0.0.0-use.local
   resolution: "@backstage-community/plugin-mcp-chat-backend-module-agentgateway@workspace:plugins/mcp-chat-backend-module-agentgateway"
   dependencies:
@@ -2740,6 +2740,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@backstage-community/plugin-mcp-chat-backend@workspace:plugins/mcp-chat-backend"
   dependencies:
+    "@backstage-community/plugin-mcp-chat-backend-module-agentgateway": "workspace:^"
     "@backstage-community/plugin-mcp-chat-backend-module-amazon-bedrock": "workspace:^"
     "@backstage-community/plugin-mcp-chat-backend-module-openai": "workspace:^"
     "@backstage-community/plugin-mcp-chat-common": "workspace:^"
