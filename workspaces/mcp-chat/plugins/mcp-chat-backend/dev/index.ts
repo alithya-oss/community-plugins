@@ -47,4 +47,7 @@ backend.add(
 backend.add(
   import('@backstage-community/plugin-mcp-chat-backend-module-amazon-bedrock'),
 );
+backend.add(
+  import('@backstage-community/plugin-mcp-chat-backend-module-agentgateway'),
+);
 backend.start();

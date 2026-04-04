@@ -1,0 +1,31 @@
+# yaml-language-server: $schema=https://agentgateway.dev/schema/config
+
+binds:
+  - port: 4000
+    listeners:
+      - routes:
+          - policies:
+              cors:
+                allowOrigins:
+                  - '*'
+                allowHeaders:
+                  - mcp-protocol-version
+                  - content-type
+                  - cache-control
+                exposeHeaders:
+                  - 'Mcp-Session-Id'
+            backends:
+              - mcp:
+                  targets:
+                    - name: everything
+                      stdio:
+                        cmd: npx
+                        args: ['@modelcontextprotocol/server-everything']
+
+llm:
+  models:
+    - name: nova-lite
+      provider: bedrock
+      params:
+        model: global.amazon.nova-2-lite-v1:0
+        awsRegion: ca-central-1
