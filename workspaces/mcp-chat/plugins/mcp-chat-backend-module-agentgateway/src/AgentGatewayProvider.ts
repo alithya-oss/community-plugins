@@ -31,13 +31,40 @@ import {
  * @public
  */
 export class AgentGatewayProvider extends LLMProvider {
+  private lastTools?: Tool[];
+
   async sendMessage(
     messages: ChatMessage[],
     tools?: Tool[],
   ): Promise<ChatResponse> {
-    const requestBody = this.formatRequest(messages, tools);
+    // Cache tools when provided so they can be re-attached on follow-up
+    // calls. Bedrock models behind the Agent Gateway require tool
+    // definitions whenever the conversation contains tool-related messages.
+    if (tools && tools.length > 0) {
+      this.lastTools = tools;
+    }
+
+    let effectiveTools = tools;
+    if (!tools?.length && this.hasToolMessages(messages)) {
+      effectiveTools = this.lastTools;
+    }
+
+    const requestBody = this.formatRequest(messages, effectiveTools);
     const response = await this.makeRequest('/chat/completions', requestBody);
     return this.parseResponse(response);
+  }
+
+  /**
+   * Returns true when the conversation history contains tool-related
+   * messages (assistant tool_calls or tool-role results), which means
+   * Bedrock will expect a toolConfig in the request.
+   */
+  private hasToolMessages(messages: ChatMessage[]): boolean {
+    return messages.some(
+      msg =>
+        msg.role === 'tool' ||
+        (msg.role === 'assistant' && msg.tool_calls?.length),
+    );
   }
 
   async testConnection(): Promise<{
@@ -113,7 +140,13 @@ export class AgentGatewayProvider extends LLMProvider {
     };
 
     if (tools && tools.length > 0) {
-      request.tools = tools;
+      request.tools = tools.map(tool => ({
+        ...tool,
+        function: {
+          ...tool.function,
+          parameters: tool.function.parameters,
+        },
+      }));
     }
 
     return request;
