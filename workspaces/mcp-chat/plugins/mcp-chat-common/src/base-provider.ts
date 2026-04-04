@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+import { LoggerService } from '@backstage/backend-plugin-api';
 import { ResponseError } from '@backstage/errors';
 import {
   ChatMessage,
@@ -33,12 +34,14 @@ export abstract class LLMProvider {
   protected baseUrl: string;
   protected model: string;
   protected type: string;
+  protected logger?: LoggerService;
 
   constructor(config: ProviderConfig) {
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl;
     this.model = config.model;
     this.type = config.type;
+    this.logger = config.logger;
   }
 
   /** Returns the provider type identifier. */
@@ -87,6 +90,14 @@ export abstract class LLMProvider {
   /** Get last response output for native MCP providers. Returns `null` by default. */
   getLastResponseOutput(): any {
     return null;
+  }
+
+  protected truncateForLogging(data: string, maxLength = 4096): string {
+    if (data.length <= maxLength) {
+      return data;
+    }
+    const truncated = data.length - maxLength;
+    return `${data.slice(0, maxLength)}... [truncated ${truncated} chars]`;
   }
 
   protected async makeRequest(endpoint: string, body: any): Promise<any> {
