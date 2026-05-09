@@ -1,5 +1,17 @@
 # @backstage-community/plugin-linkerd-backend
 
+## 0.19.0
+
+### Minor Changes
+
+- da7de05: Backstage version bump to v1.50.3
+
+## 0.18.1
+
+### Patch Changes
+
+- c120454: Updated dependency `@types/supertest` to `^7.0.0`.
+
 ## 0.18.0
 
 ### Minor Changes

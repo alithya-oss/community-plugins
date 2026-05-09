@@ -22,6 +22,8 @@ export class OpenAIProvider extends LLMProvider {
   // (undocumented)
   protected parseResponse(response: any): ChatResponse;
   // (undocumented)
+  protected get providerName(): string;
+  // (undocumented)
   sendMessage(messages: ChatMessage[], tools?: Tool[]): Promise<ChatResponse>;
   // (undocumented)
   testConnection(): Promise<{

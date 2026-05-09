@@ -65,10 +65,14 @@ export interface ChatConversationStoreOptions {
 export function createRouter(options: RouterOptions): Promise<express.Router>;
 
 // @public
+export const DEFAULT_MCP_TOOL_CALL_TIMEOUT_MS = 60000;
+
+// @public
 export function executeToolCall(
   toolCall: ToolCall,
   tools: ServerTool[],
   mcpClients: Map<string, Client>,
+  toolCallTimeout?: number,
 ): Promise<ToolExecutionResult>;
 
 // @public

@@ -84,6 +84,8 @@ export interface MCPServerConfig {
   args?: string[];
   /** URL endpoint (for HTTP servers) */
   url?: string;
+  /** List of tool names to disable on this server */
+  disabledTools?: string[];
 }
 
 /**
@@ -189,8 +191,14 @@ export interface ProviderConfig {
   baseUrl: string;
   /** Model identifier to use */
   model: string;
+  /** Azure OpenAI deployment name. Required when using the `azure-openai` provider type. */
+  deploymentName?: string;
   /** Logger for debugging */
   logger?: import('@backstage/backend-plugin-api').LoggerService;
+  /** Maximum number of tokens to generate */
+  maxTokens?: number;
+  /** Temperature for response randomness, between 0 and 2 */
+  temperature?: number;
 }
 
 /**

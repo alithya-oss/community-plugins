@@ -17,6 +17,8 @@ import {
   coreServices,
   createBackendPlugin,
 } from '@backstage/backend-plugin-api';
+import { llmProviderExtensionPoint } from '@backstage-community/plugin-mcp-chat-node';
+import { LLMProvider } from '@backstage-community/plugin-mcp-chat-common';
 import { createRouter } from './router';
 import {
   MCPClientServiceImpl,
@@ -24,8 +26,6 @@ import {
   SummarizationService,
 } from './services';
 import { validateConfig } from './utils';
-import { llmProviderExtensionPoint } from './extensions';
-import { LLMProvider } from './providers/base-provider';
 
 /**
  * mcpChatPlugin backend plugin

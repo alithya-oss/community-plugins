@@ -14,4 +14,4 @@
  * limitations under the License.
  */
 
-export { LLMProvider } from './base-provider';
+export { LLMProvider } from '@backstage-community/plugin-mcp-chat-common';

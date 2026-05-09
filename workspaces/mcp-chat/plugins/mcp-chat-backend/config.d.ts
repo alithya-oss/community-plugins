@@ -33,10 +33,18 @@ export interface Config {
        */
       token?: string;
       /**
-       * Model name to use for this provider
+       * Model name to use for this provider.
+       * For `azure-openai` this should be the underlying model name (e.g. `gpt-4o-mini`),
+       * used only for capability detection. The actual API calls use `deploymentName`.
        * @visibility backend
        */
       model: string;
+      /**
+       * Azure OpenAI deployment name.
+       * Required for the `azure-openai` provider.
+       * @visibility backend
+       */
+      deploymentName?: string;
       /**
        * Base URL for the provider's API
        * @visibility backend
@@ -94,12 +102,25 @@ export interface Config {
        */
       args?: string[];
       /**
+       * List of tool names to disable for this MCP server.
+       * Disabled tools are filtered out at discovery time and never exposed to the LLM or frontend.
+       * @visibility backend
+       */
+      disabledTools?: string[];
+      /**
        * Type of MCP server connection
        * @visibility backend
        * @enum { 'stdio' | 'streamable-http' }
        */
       type?: 'stdio' | 'streamable-http'; // Note: Use MCPServerType enum in code
     }>;
+    /**
+     * Timeout in milliseconds for MCP tool call requests.
+     * Increase this for long-running tools such as scaffolder templates.
+     * @visibility backend
+     * @default 60000
+     */
+    toolCallTimeout?: number;
     /**
      * Custom system prompt for the AI assistant
      * @visibility backend

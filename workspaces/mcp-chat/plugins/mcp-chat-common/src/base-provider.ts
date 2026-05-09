@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 import { LoggerService } from '@backstage/backend-plugin-api';
-import { ResponseError } from '@backstage/errors';
 import {
   ChatMessage,
   Tool,
@@ -35,6 +34,8 @@ export abstract class LLMProvider {
   protected model: string;
   protected type: string;
   protected logger?: LoggerService;
+  protected maxTokens?: number;
+  protected temperature?: number;
 
   constructor(config: ProviderConfig) {
     this.apiKey = config.apiKey;
@@ -42,6 +43,8 @@ export abstract class LLMProvider {
     this.model = config.model;
     this.type = config.type;
     this.logger = config.logger;
+    this.maxTokens = config.maxTokens;
+    this.temperature = config.temperature;
   }
 
   /** Returns the provider type identifier. */
@@ -101,16 +104,45 @@ export abstract class LLMProvider {
   }
 
   protected async makeRequest(endpoint: string, body: any): Promise<any> {
-    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+    const url = `${this.baseUrl}${endpoint}`;
+
+    this.logger?.debug(`[${this.type}] Request to ${url}`, {
+      body: this.truncateForLogging(JSON.stringify(body)),
+    });
+    const startTime = Date.now();
+    const response = await fetch(url, {
       method: 'POST',
       headers: this.getHeaders(),
       body: JSON.stringify(body),
     });
+    const duration = Date.now() - startTime;
 
     if (!response.ok) {
-      throw await ResponseError.fromResponse(response);
+      const errorText = await response.text();
+      this.logger?.error(
+        `[${this.type}] Request failed (${response.status}) after ${duration}ms`,
+        { responseData: errorText },
+      );
+      throw new Error(
+        `Request failed with status ${response.status}: ${errorText}`,
+      );
     }
 
-    return response.json();
+    const responseData = await response.json();
+
+    this.logger?.debug(`[${this.type}] Response received in ${duration}ms`, {
+      data: this.truncateForLogging(JSON.stringify(responseData)),
+    });
+
+    // Warn if response was truncated due to token limits
+    const finishReason = responseData.choices?.[0]?.finish_reason;
+    if (finishReason === 'length' || finishReason === 'max_tokens') {
+      this.logger?.warn(
+        `[${this.type}] Response was truncated due to token limit (finish_reason: ${finishReason}). ` +
+          `Consider increasing max_tokens in your provider configuration.`,
+      );
+    }
+
+    return responseData;
   }
 }

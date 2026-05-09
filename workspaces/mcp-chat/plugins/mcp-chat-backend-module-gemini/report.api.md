@@ -6,7 +6,7 @@
 import { BackendFeature } from '@backstage/backend-plugin-api';
 import { ChatMessage } from '@backstage-community/plugin-mcp-chat-common';
 import { ChatResponse } from '@backstage-community/plugin-mcp-chat-common';
-import { GenerateContentResult } from '@google/generative-ai';
+import { GenerateContentResponse } from '@google/genai';
 import { LLMProvider } from '@backstage-community/plugin-mcp-chat-common';
 import { ProviderConfig } from '@backstage-community/plugin-mcp-chat-common';
 import { Tool } from '@backstage-community/plugin-mcp-chat-common';
@@ -23,7 +23,7 @@ export class GeminiProvider extends LLMProvider {
   // (undocumented)
   protected getHeaders(): Record<string, string>;
   // (undocumented)
-  protected parseResponse(result: GenerateContentResult): ChatResponse;
+  protected parseResponse(result: GenerateContentResponse): ChatResponse;
   // (undocumented)
   sendMessage(messages: ChatMessage[], tools?: Tool[]): Promise<ChatResponse>;
   // (undocumented)

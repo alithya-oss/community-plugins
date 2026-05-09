@@ -1,6 +1,6 @@
 {
   "name": "@backstage-community/plugin-mcp-chat-backend",
-  "version": "0.8.0",
+  "version": "0.11.0",
   "license": "Apache-2.0",
   "main": "src/index.ts",
   "types": "src/index.ts",
@@ -44,6 +44,11 @@
   "devDependencies": {
     "@backstage-community/plugin-mcp-chat-backend-module-agentgateway": "workspace:^",
     "@backstage-community/plugin-mcp-chat-backend-module-amazon-bedrock": "workspace:^",
+    "@backstage-community/plugin-mcp-chat-backend-module-anthropic": "workspace:^",
+    "@backstage-community/plugin-mcp-chat-backend-module-azure-openai": "workspace:^",
+    "@backstage-community/plugin-mcp-chat-backend-module-gemini": "workspace:^",
+    "@backstage-community/plugin-mcp-chat-backend-module-litellm": "workspace:^",
+    "@backstage-community/plugin-mcp-chat-backend-module-ollama": "workspace:^",
     "@backstage-community/plugin-mcp-chat-backend-module-openai": "workspace:^",
     "@backstage/backend-test-utils": "^1.6.0",
     "@backstage/cli": "^0.33.0",

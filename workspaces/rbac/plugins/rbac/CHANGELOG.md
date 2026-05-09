@@ -1,5 +1,32 @@
 # @backstage-community/plugin-rbac
 
+## 1.52.4
+
+### Patch Changes
+
+- a63b0b6: Updated dependency `start-server-and-test` to `3.0.2`.
+- 170f85d: Migrate to Jest 30 and fix backend test assertion compatibility
+- Updated dependencies [170f85d]
+  - @backstage-community/plugin-rbac-common@1.26.1
+
+## 1.52.3
+
+### Patch Changes
+
+- c1b8a19: Expanded checkbox click targets in the permission policies form to include the associated label text. Clicking the permission name or policy action text now toggles the corresponding checkbox.
+
+## 1.52.2
+
+### Patch Changes
+
+- 3fc1a9e: Fix RBAC role creation form UI text consistency and accuracy
+
+## 1.52.1
+
+### Patch Changes
+
+- a559dfb: Updated dependency `@types/node` to `22.19.17`.
+
 ## 1.52.0
 
 ### Minor Changes

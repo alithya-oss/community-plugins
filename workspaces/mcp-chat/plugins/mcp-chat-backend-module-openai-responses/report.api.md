@@ -28,7 +28,10 @@ export class OpenAIResponsesProvider extends LLMProvider {
   protected parseResponse(response: ResponsesApiResponse): ChatResponse;
   // (undocumented)
   sendMessage(messages: ChatMessage[], _tools?: Tool[]): Promise<ChatResponse>;
-  setMcpServerConfigs(configs: MCPServerFullConfig[]): void;
+  setMcpServerConfigs(
+    configs: MCPServerFullConfig[],
+    allowedToolsByServer?: Map<string, string[]>,
+  ): void;
   supportsNativeMcp(): boolean;
   // (undocumented)
   testConnection(): Promise<{

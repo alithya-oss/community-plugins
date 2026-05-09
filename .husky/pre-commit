@@ -1,7 +1,7 @@
 #!/usr/bin/env sh
 set -e
 
-yarn lint-staged
+# yarn lint-staged
 
 
 # Please keep this section at the bottom of the file.

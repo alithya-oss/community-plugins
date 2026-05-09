@@ -1,5 +1,35 @@
 # @backstage-community/plugin-rbac-backend
 
+## 7.12.4
+
+### Patch Changes
+
+- 170f85d: Migrate to Jest 30 and fix backend test assertion compatibility
+- Updated dependencies [170f85d]
+  - @backstage-community/plugin-rbac-common@1.26.1
+  - @backstage-community/plugin-rbac-node@1.20.1
+
+## 7.12.3
+
+### Patch Changes
+
+- fb2a770: Made postgres username and password optional in casbin adapter factory to support passwordless authentication
+
+## 7.12.2
+
+### Patch Changes
+
+- 39272f8: Updated dependency `csv-parse` to `^6.0.0`.
+- 70e6333: Updated dependency `@dagrejs/graphlib` to `^4.0.0`.
+- a559dfb: Updated dependency `@types/node` to `22.19.17`.
+- 8846adf: Updated dependency `qs` to `6.15.1`.
+
+## 7.12.1
+
+### Patch Changes
+
+- 40e44bb: Updated dependency `qs` to `6.14.2`.
+
 ## 7.12.0
 
 ### Minor Changes

@@ -1,5 +1,23 @@
 # @backstage-community/plugin-catalog-backend-module-scaffolder-relation-processor
 
+## 2.14.2
+
+### Patch Changes
+
+- 170f85d: Migrate to Jest 30
+
+## 2.14.1
+
+### Patch Changes
+
+- 10451e9: Bump pinned dependencies to resolve to backstage 1.49.3 instead of backstage 1.45.3
+
+## 2.14.0
+
+### Minor Changes
+
+- 7d01570: Backstage version bump to v1.49.3
+
 ## 2.13.0
 
 ### Minor Changes
