@@ -60,6 +60,13 @@ export class LinguistBackendClient implements LinguistBackendApi {
   private readonly useSourceLocation?: boolean;
   private readonly kind: string[];
   private readonly linguistJsOptions?: Record<string, unknown>;
+
+  // Number of additional attempts after the first before giving up on an
+  // entity. Kept as internal constants so transient-failure handling behaves
+  // consistently without expanding the public constructor signature.
+  private readonly maxRetries = 2;
+  private readonly retryBaseDelayMs = 1000;
+
   public constructor(
     logger: LoggerService,
     store: LinguistBackendStore,
@@ -234,17 +241,24 @@ export class LinguistBackendClient implements LinguistBackendApi {
       `Processing languages for entity ${entityRef} from ${url}`,
     );
 
-    let dir: string;
+    // `dir` is only assigned once the source tree has been fetched. We fetch
+    // the tree and run Linguist inside a bounded retry so that transient
+    // failures (e.g. a flaky network read) are retried rather than causing the
+    // entity to be marked processed and deferred until the next stale window.
+    let dir: string | undefined;
     try {
-      const readTreeResponse = await this.urlReader.readTree(url);
-      dir = await readTreeResponse.dir();
-    } catch (error) {
-      await this.store.markEntityProcessed(entityRef, new Date());
-      throw error;
-    }
+      const results = await this.withRetry(entityRef, async () => {
+        // If a previous attempt already materialised a temp directory, remove
+        // it before fetching again so retries do not leak directories.
+        if (dir) {
+          await fs.remove(dir);
+          dir = undefined;
+        }
+        const readTreeResponse = await this.urlReader.readTree(url);
+        dir = await readTreeResponse.dir();
+        return this.getLinguistResults(dir);
+      });
 
-    try {
-      const results = await this.getLinguistResults(dir);
       const totalBytes = results.languages.bytes;
       const langResults = results.languages.results;
 
@@ -278,6 +292,10 @@ export class LinguistBackendClient implements LinguistBackendApi {
 
       return await this.store.insertEntityResults(entityResults);
     } catch (error) {
+      // All retries were exhausted (or persisting the result failed). Mark the
+      // entity processed so a single failing entity does not block the rest of
+      // the pending queue indefinitely. Marking is best-effort: if it fails we
+      // log and still surface the original error.
       try {
         await this.store.markEntityProcessed(entityRef, new Date());
       } catch (markError) {
@@ -287,9 +305,54 @@ export class LinguistBackendClient implements LinguistBackendApi {
       }
       throw error;
     } finally {
-      this.logger?.info(`Cleaning up files from ${dir}`);
-      await fs.remove(dir);
+      // Only clean up when a temporary directory was actually created.
+      if (dir) {
+        this.logger?.info(`Cleaning up files from ${dir}`);
+        await fs.remove(dir);
+      }
     }
+  }
+
+  /**
+   * Runs the given operation, retrying up to `maxRetries` additional times with
+   * exponential backoff before giving up. Used to absorb transient failures
+   * when fetching and analysing an entity's source tree.
+   *
+   * @internal
+   */
+  async withRetry<T>(
+    entityRef: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    let lastError: unknown;
+
+    for (let attempt = 0; attempt <= this.maxRetries; attempt++) {
+      try {
+        return await operation();
+      } catch (error) {
+        lastError = error;
+        assertError(error);
+
+        if (attempt < this.maxRetries) {
+          const delayMs = this.retryBaseDelayMs * 2 ** attempt;
+          this.logger?.warn(
+            `Attempt ${attempt + 1} of ${
+              this.maxRetries + 1
+            } to process "${entityRef}" failed, retrying in ${delayMs}ms: ${
+              error.message
+            }`,
+          );
+          await this.delay(delayMs);
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  /** @internal */
+  async delay(ms: number): Promise<void> {
+    await new Promise(resolve => setTimeout(resolve, ms));
   }
 
   /** @internal */

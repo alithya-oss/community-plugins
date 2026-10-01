@@ -14,7 +14,14 @@
  * limitations under the License.
  */
 
+import {
+  UrlReaderService,
+  UrlReaderServiceReadTreeResponse,
+} from '@backstage/backend-plugin-api';
+import { CatalogApi } from '@backstage/catalog-client';
+import { Results } from 'linguist-js/dist/types';
 import { DateTime } from 'luxon';
+import { LinguistBackendStore } from '../db';
 import { kindOrDefault, LinguistBackendClient } from './LinguistBackendClient';
 import fs from 'fs-extra';
 import { LINGUIST_ANNOTATION } from '@backstage-community/plugin-linguist-common';
@@ -52,7 +59,17 @@ const linguistResultMock = Promise.resolve({
     },
     extensions: {},
   },
-});
+} as Results);
+
+const readTreeResponseMock = {
+  files: async () => [
+    {
+      content: async () => Buffer.from('-- XXX: code-data', 'utf8'),
+      path: 'my-file.js',
+    },
+  ],
+  dir: async () => '/temp/my-code',
+} as unknown as UrlReaderServiceReadTreeResponse;
 
 describe('kindOrDefault', () => {
   it('should return default kind when undefined', () => {
@@ -69,7 +86,7 @@ describe('kindOrDefault', () => {
 describe('Linguist backend API', () => {
   const logger = mockServices.logger.mock();
 
-  const store = {
+  const store: jest.Mocked<LinguistBackendStore> = {
     insertEntityResults: jest.fn(),
     insertNewEntity: jest.fn(),
     markEntityProcessed: jest.fn(),
@@ -80,28 +97,29 @@ describe('Linguist backend API', () => {
     deleteEntity: jest.fn(),
   };
 
-  const urlReader = {
+  const urlReader: jest.Mocked<UrlReaderService> = {
     readTree: jest.fn(),
     search: jest.fn(),
     readUrl: jest.fn(),
   };
 
-  const catalogApi = {
+  const catalogApi: jest.Mocked<CatalogApi> = {
     getEntities: jest.fn(),
     getEntityByRef: jest.fn(),
-  };
+  } as any;
 
   const api = new LinguistBackendClient(
     logger,
     store,
     urlReader,
     mockServices.auth(),
-    // @ts-ignore test mock only includes methods used by the client
     catalogApi,
   );
 
   beforeEach(() => {
     jest.resetAllMocks();
+    // Avoid real backoff waits during retry tests.
+    jest.spyOn(api, 'delay').mockResolvedValue();
   });
 
   it('should get languages for an entity', async () => {
@@ -192,7 +210,6 @@ describe('Linguist backend API', () => {
       store,
       urlReader,
       mockServices.auth(),
-      // @ts-ignore test mock only includes methods used by the client
       catalogApi,
       undefined,
       undefined,
@@ -326,7 +343,6 @@ describe('Linguist backend API', () => {
       store,
       urlReader,
       mockServices.auth(),
-      // @ts-ignore test mock only includes methods used by the client
       catalogApi,
       { days: 5 },
     );
@@ -363,18 +379,9 @@ describe('Linguist backend API', () => {
   it('should generate and save languages for an entity', async () => {
     const spy = jest
       .spyOn(api, 'getLinguistResults')
-      // @ts-expect-error fixture shape is sufficient for this test
-      .mockImplementation(() => linguistResultMock);
+      .mockReturnValue(linguistResultMock);
 
-    urlReader.readTree.mockResolvedValueOnce({
-      files: async () => [
-        {
-          content: async () => Buffer.from('-- XXX: code-data', 'utf8'),
-          path: 'my-file.js',
-        },
-      ],
-      dir: async () => '/temp/my-code',
-    });
+    urlReader.readTree.mockResolvedValueOnce(readTreeResponseMock);
 
     const fsSpy = jest.spyOn(fs, 'remove');
 
@@ -384,18 +391,43 @@ describe('Linguist backend API', () => {
     );
     expect(api.getLinguistResults).toHaveBeenCalled();
     expect(store.insertEntityResults).toHaveBeenCalled();
+    expect(store.markEntityProcessed).not.toHaveBeenCalled();
     expect(fs.remove).toHaveBeenCalled();
     spy.mockClear();
     fsSpy.mockClear();
   });
 
-  it('should clean up and mark an entity processed when linguist fails', async () => {
+  it('should retry a transient failure and succeed without marking the entity processed', async () => {
+    const resultsSpy = jest
+      .spyOn(api, 'getLinguistResults')
+      .mockReturnValue(linguistResultMock);
+
+    // First read fails (transient), second read succeeds.
+    urlReader.readTree
+      .mockRejectedValueOnce(new Error('temporary network error'))
+      .mockResolvedValueOnce(readTreeResponseMock);
+
+    const fsSpy = jest.spyOn(fs, 'remove');
+
+    await api.generateEntityLanguages(
+      'component:default/fake-service',
+      'https://some.fake/service/',
+    );
+
+    expect(urlReader.readTree).toHaveBeenCalledTimes(2);
+    expect(api.delay).toHaveBeenCalledTimes(1);
+    expect(store.insertEntityResults).toHaveBeenCalled();
+    expect(store.markEntityProcessed).not.toHaveBeenCalled();
+    expect(fs.remove).toHaveBeenCalled();
+
+    resultsSpy.mockClear();
+    fsSpy.mockClear();
+  });
+
+  it('should clean up and mark an entity processed when linguist fails on every attempt', async () => {
     jest.spyOn(api, 'getLinguistResults').mockRejectedValue(new Error('boom'));
 
-    urlReader.readTree.mockResolvedValueOnce({
-      files: async () => [],
-      dir: async () => '/temp/my-code',
-    });
+    urlReader.readTree.mockResolvedValue(readTreeResponseMock);
 
     const fsSpy = jest.spyOn(fs, 'remove');
 
@@ -406,6 +438,8 @@ describe('Linguist backend API', () => {
       ),
     ).rejects.toThrow('boom');
 
+    // Retried the configured number of times before giving up.
+    expect(urlReader.readTree).toHaveBeenCalledTimes(3);
     expect(store.markEntityProcessed).toHaveBeenCalledWith(
       'component:default/fake-service',
       expect.any(Date),
@@ -448,18 +482,9 @@ describe('Linguist backend API', () => {
 
     const resultsSpy = jest
       .spyOn(api, 'getLinguistResults')
-      // @ts-expect-error fixture shape is sufficient for this test
-      .mockImplementation(() => linguistResultMock);
+      .mockReturnValue(linguistResultMock);
 
-    urlReader.readTree.mockResolvedValue({
-      files: async () => [
-        {
-          content: async () => Buffer.from('-- XXX: code-data', 'utf8'),
-          path: 'my-file.js',
-        },
-      ],
-      dir: async () => '/temp/my-code',
-    });
+    urlReader.readTree.mockResolvedValue(readTreeResponseMock);
 
     const fsSpy = jest.spyOn(fs, 'remove');
 
@@ -523,7 +548,7 @@ describe('Linguist backend API', () => {
     generateSpy.mockRestore();
   });
 
-  it('should mark entity processed and rethrow when reading source tree fails', async () => {
+  it('should mark entity processed and rethrow when reading source tree fails on every attempt', async () => {
     urlReader.readTree.mockRejectedValue(new Error('read failed'));
     const fsSpy = jest.spyOn(fs, 'remove');
 
@@ -534,10 +559,12 @@ describe('Linguist backend API', () => {
       ),
     ).rejects.toThrow('read failed');
 
+    expect(urlReader.readTree).toHaveBeenCalledTimes(3);
     expect(store.markEntityProcessed).toHaveBeenCalledWith(
       'component:default/fake-service',
       expect.any(Date),
     );
+    // No directory was ever created, so nothing to clean up.
     expect(fsSpy).not.toHaveBeenCalled();
     fsSpy.mockClear();
   });
@@ -548,11 +575,11 @@ describe('Linguist backend API', () => {
       store,
       urlReader,
       mockServices.auth(),
-      // @ts-ignore test mock only includes methods used by the client
       catalogApi,
       undefined,
       2,
     );
+    jest.spyOn(apiWithBatchSize, 'delay').mockResolvedValue();
 
     store.getProcessedEntities.mockResolvedValue([
       {
@@ -586,18 +613,9 @@ describe('Linguist backend API', () => {
 
     const resultsSpy = jest
       .spyOn(apiWithBatchSize, 'getLinguistResults')
-      // @ts-expect-error fixture shape is sufficient for this test
-      .mockImplementation(() => linguistResultMock);
+      .mockReturnValue(linguistResultMock);
 
-    urlReader.readTree.mockResolvedValue({
-      files: async () => [
-        {
-          content: async () => Buffer.from('-- XXX: code-data', 'utf8'),
-          path: 'my-file.js',
-        },
-      ],
-      dir: async () => '/temp/my-code',
-    });
+    urlReader.readTree.mockResolvedValue(readTreeResponseMock);
 
     const fsSpy = jest.spyOn(fs, 'remove');
 
